@@ -14,34 +14,37 @@ package "build-essential"
 
 package "tcl8.5"
 
+version_number = node['redis']['version']
+
 # download http://download.redis.io/releases/redis-2.8.9.tar.gz
-remote_file "~/redis-2.8.9.tar.gz" do
-  source "http://download.redis.io/releases/redis-2.8.9.tar.gz"
-  notifies :run, "execute[tar xzf redis-2.8.9.tar.gz]", :immediately
+remote_file "/tmp/redis-#{version_number}.tar.gz" do
+  source "http://download.redis.io/releases/redis-#{version_number}.tar.gz"
+  notifies :run, "execute[unzip_redis_archive]", :immediately
 end
 
 # unzip the archive
-execute "tar xzf redis-2.8.9.tar.gz" do
+execute 'unzip_redis_archive' do
+  command "tar xzf /tmp/redis-#{version_number}.tar.gz"
   cwd "/tmp"
   action :nothing
-  notifies :run, "execute[make && make install]", :immediately
+  notifies :run, "execute[redis_build_and_install]", :immediately
 end
 
 # Configure the application: make and make install
-execute "make && make install" do
-  cwd "/tmp/redis-2.8.9"
+execute "redis_build_and_install" do
+  cwd "/tmp/redis-#{version_number}"
   action :nothing
   notifies :run, "execute[echo -n | ./install_server.sh]", :immediately
 end
 
 # Install the Server
 execute "echo -n | ./install_server.sh" do
-  cwd "/tmp/redis-2.8.9/utils"
+  cwd "/tmp/redis-#{version_number}/utils"
   action :nothing
 end
 
 service "redis_6379" do
-  action [ :start ]
+  action [:start]
   # This is necessary so that the service will not keep reporting as updated
   supports :status => true
 end
